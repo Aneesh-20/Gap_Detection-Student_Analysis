@@ -87,6 +87,10 @@ async def startup_event():
     app.state.df_questions = df_questions
     recalculate_models()
 
+@app.get("/api/health")
+async def health_check():
+    return {"status": "ok", "message": "API is running smoothly"}
+
 @app.get("/api/subjects")
 async def get_subjects():
     return app.state.subjects
@@ -179,6 +183,9 @@ async def bulk_import_questions(file: UploadFile = File(...)):
         raise HTTPException(status_code=400, detail="Only CSV files are supported")
     
     contents = await file.read()
+    if not contents:
+        raise HTTPException(status_code=400, detail="Uploaded CSV file is completely empty.")
+        
     try:
         decoded_content = contents.decode('utf-8')
     except UnicodeDecodeError:
@@ -277,6 +284,9 @@ async def bulk_import_responses(file: UploadFile = File(...)):
         raise HTTPException(status_code=400, detail="Only CSV files are supported")
     
     contents = await file.read()
+    if not contents:
+        raise HTTPException(status_code=400, detail="Uploaded CSV file is completely empty.")
+        
     try:
         decoded_content = contents.decode('utf-8')
     except UnicodeDecodeError:
