@@ -3,10 +3,20 @@ from girth import twopl_mml
 
 def fit_irt_model(df_pivot):
     """
-    Fits a 2-Parameter Logistic (2PL) IRT model using Marginal Maximum Likelihood.
-    df_pivot: pandas DataFrame with students as rows and questions as columns.
+    Fits a 2-Parameter Logistic (2PL) Item Response Theory (IRT) model using Marginal Maximum Likelihood (MML).
+    
+    This model estimates:
+    - Student Ability: The latent trait representing the student's proficiency.
+    - Question Difficulty: The point on the ability scale where a student has a 50% chance of a correct response.
+    - Question Discrimination: How well the question differentiates between high and low ability students.
+    
+    Args:
+        df_pivot (pd.DataFrame): A pandas DataFrame with student_ids as rows and question_ids as columns.
+                                 Values should be 1 (correct), 0 (incorrect), or NaN/missing.
+                                 
     Returns:
-        dict containing 'abilities' (student), 'difficulties' (question), 'discriminations' (question)
+        dict: A dictionary containing estimated 'abilities', 'difficulties', 'discriminations', 
+              along with the original 'student_ids' and 'question_ids'.
     """
     # Girth expects items as rows and people as columns.
     # df_pivot has students as rows, questions as columns. We transpose it.

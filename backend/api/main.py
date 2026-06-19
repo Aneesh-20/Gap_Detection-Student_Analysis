@@ -1,6 +1,7 @@
-from fastapi import FastAPI, HTTPException, UploadFile, File
+import logging
+from fastapi import FastAPI, HTTPException, UploadFile, File, Query
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 import pandas as pd
 import numpy as np
 import random
@@ -16,11 +17,14 @@ from models.irt import fit_irt_model
 from models.clustering import cluster_students
 
 app = FastAPI()
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # Allow CORS for local frontend
+origins = os.environ.get("ALLOWED_ORIGINS", "*").split(",")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], # Simplified for dev
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -34,19 +38,19 @@ app.state.clusters = None
 app.state.subjects = ['Algebra', 'Geometry', 'Calculus', 'Statistics', 'Trigonometry']
 
 class QuestionCreate(BaseModel):
-    topic: str
-    grade: str
-    type: str = "MCQ"
+    topic: str = Field(..., min_length=1)
+    grade: str = Field(..., min_length=1)
+    type: str = Field("MCQ", min_length=1)
     text: str = ""
 
 class SubjectCreate(BaseModel):
-    name: str
+    name: str = Field(..., min_length=1)
 
 class QuestionUpdate(BaseModel):
-    topic: str
-    grade: str
-    type: str
-    text: str
+    topic: str = Field(..., min_length=1)
+    grade: str = Field(..., min_length=1)
+    type: str = Field(..., min_length=1)
+    text: str = Field(..., min_length=1)
 
 class GenerateRequest(BaseModel):
     topic: str
@@ -72,7 +76,7 @@ def recalculate_models():
             app.state.df_questions['is_flagged'] = app.state.df_questions['irt_discrimination'] < 0.2
             
         except Exception as e:
-            print(f"Error recalculating models: {e}")
+            logger.error(f"Error recalculating models: {e}")
             app.state.irt_results = {'abilities': np.zeros(len(app.state.df_pivot.index)), 'difficulties': np.zeros(len(app.state.df_pivot.columns)), 'discriminations': np.ones(len(app.state.df_pivot.columns)), 'student_ids': app.state.df_pivot.index.tolist(), 'question_ids': app.state.df_pivot.columns.tolist()}
             app.state.clusters = {student_id: 0 for student_id in app.state.df_pivot.index}
     else:
@@ -87,6 +91,10 @@ async def startup_event():
     app.state.df_questions = df_questions
     recalculate_models()
 
+@app.get("/api/health")
+async def health_check():
+    return {"status": "ok", "message": "API is running smoothly"}
+
 @app.get("/api/subjects")
 async def get_subjects():
     return app.state.subjects
@@ -98,11 +106,12 @@ async def create_subject(s: SubjectCreate):
     return {"message": "Subject added", "subjects": app.state.subjects}
 
 @app.get("/api/questions")
-async def get_questions():
+async def get_questions(skip: int = Query(0, ge=0), limit: int = Query(100, gt=0)):
     if app.state.df_questions is None or len(app.state.df_questions) == 0:
         return []
     # Replace NaN with None for JSON serialization
-    return app.state.df_questions.replace({np.nan: None}).to_dict(orient='records')
+    questions = app.state.df_questions.replace({np.nan: None}).to_dict(orient='records')
+    return questions[skip : skip + limit]
 
 @app.post("/api/questions")
 async def create_question(q: QuestionCreate):
@@ -179,6 +188,9 @@ async def bulk_import_questions(file: UploadFile = File(...)):
         raise HTTPException(status_code=400, detail="Only CSV files are supported")
     
     contents = await file.read()
+    if not contents:
+        raise HTTPException(status_code=400, detail="Uploaded CSV file is completely empty.")
+        
     try:
         decoded_content = contents.decode('utf-8')
     except UnicodeDecodeError:
@@ -277,6 +289,9 @@ async def bulk_import_responses(file: UploadFile = File(...)):
         raise HTTPException(status_code=400, detail="Only CSV files are supported")
     
     contents = await file.read()
+    if not contents:
+        raise HTTPException(status_code=400, detail="Uploaded CSV file is completely empty.")
+        
     try:
         decoded_content = contents.decode('utf-8')
     except UnicodeDecodeError:
