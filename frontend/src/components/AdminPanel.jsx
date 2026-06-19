@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { Trash2, Edit2, Plus, Upload, Copy, Search, Sparkles, RefreshCw } from 'lucide-react';
 import '../admin.css';
+import API_BASE from '../config';
 
 const AdminPanel = () => {
   const location = useLocation();
@@ -33,8 +34,8 @@ const AdminPanel = () => {
     try {
       setLoading(true);
       const [questionsRes, subjectsRes] = await Promise.all([
-        axios.get('http://localhost:8000/api/questions'),
-        axios.get('http://localhost:8000/api/subjects')
+        axios.get(`${API_BASE}/api/questions`),
+        axios.get(`${API_BASE}/api/subjects`)
       ]);
       setQuestions(questionsRes.data);
       setTopicOptions(subjectsRes.data);
@@ -82,7 +83,7 @@ const AdminPanel = () => {
 
   const handleGenerateAi = async () => {
     try {
-      const res = await axios.post('http://localhost:8000/api/smart/generate', { topic: aiTopic });
+      const res = await axios.post(`${API_BASE}/api/smart/generate`, { topic: aiTopic });
       setFormData({ ...formData, topic: aiTopic, text: res.data.text, type: res.data.type });
       setIsAiModalOpen(false);
       setIsModalOpen(true);
@@ -95,9 +96,9 @@ const AdminPanel = () => {
     e.preventDefault();
     try {
       if (editingId) {
-        await axios.put(`http://localhost:8000/api/questions/${editingId}`, formData);
+        await axios.put(`${API_BASE}/api/questions/${editingId}`, formData);
       } else {
-        await axios.post('http://localhost:8000/api/questions', formData);
+        await axios.post(`${API_BASE}/api/questions`, formData);
       }
       setIsModalOpen(false);
       fetchQuestions();
@@ -109,7 +110,7 @@ const AdminPanel = () => {
   const handleDelete = async (questionId) => {
     if (window.confirm(`Delete ${questionId}?`)) {
       try {
-        await axios.delete(`http://localhost:8000/api/questions/${questionId}`);
+        await axios.delete(`${API_BASE}/api/questions/${questionId}`);
         fetchQuestions();
       } catch (err) {}
     }
@@ -119,7 +120,7 @@ const AdminPanel = () => {
     e.preventDefault();
     if (!newSubject.trim()) return;
     try {
-      await axios.post('http://localhost:8000/api/subjects', { name: newSubject });
+      await axios.post(`${API_BASE}/api/subjects`, { name: newSubject });
       setNewSubject('');
       setIsSubjectModalOpen(false);
       fetchQuestions(); // Refresh subjects list
@@ -134,7 +135,7 @@ const AdminPanel = () => {
     formPayload.append('file', bulkFile);
     try {
       setBulkStatus('Uploading...');
-      const res = await axios.post('http://localhost:8000/api/questions/bulk-import', formPayload, {
+      const res = await axios.post(`${API_BASE}/api/questions/bulk-import`, formPayload, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
       setBulkStatus(`✅ ${res.data.message}`);

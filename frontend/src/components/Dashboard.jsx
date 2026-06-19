@@ -3,6 +3,7 @@ import axios from 'axios';
 import CohortHeatmap from './CohortHeatmap';
 import StudentRadarChart from './StudentRadarChart';
 import { Filter } from 'lucide-react';
+import API_BASE from '../config';
 
 const Dashboard = () => {
   const [data, setData] = useState(null);
@@ -17,7 +18,7 @@ const Dashboard = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const response = await axios.get('http://localhost:8000/api/data');
+        const response = await axios.get(`${API_BASE}/api/data`);
         setData(response.data);
         setLoading(false);
       } catch (err) {
